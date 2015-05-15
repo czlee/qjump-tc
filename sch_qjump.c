@@ -105,8 +105,11 @@ static int qfifo_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 {
     struct qjump_fifo_priv* priv = qdisc_priv(sch);
     struct timespec ts;
-    const u64 ts_now_cycles = get_cycles();
+    u64 ts_now_cycles = 0;
     u64 ts_now_ns = 0;
+    #ifndef KERNEL_CLOCK
+        ts_now_cycles = get_cycles();
+    #endif
     getnstimeofday(&ts);
     ts_now_ns = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
     #ifdef KERNEL_CLOCK
@@ -178,7 +181,9 @@ struct Qdisc *qjump_fifo_create_dflt(struct netdev_queue *dev_queue, struct Qdis
 {
     struct Qdisc *q;
     int err = -ENOMEM;
-    //struct timespec ts; //Allow QJump to be run directly from getnstimeofday()
+    #ifdef KERNEL_CLOCK
+        struct timespec ts; //Allow QJump to be run directly from getnstimeofday()
+    #endif
 
 
     if(verbose >= 1) printk("qjump[%lu]: Init fifo limit=%u\n", verbose, limit);
@@ -456,9 +461,11 @@ static int __init qjump_module_init(void)
     u64 ts_end_ns = 0;
     u64 start_cycles = 0;
     u64 end_cycles = 0;
-    int has_invariant_tsc = 0;
-    unsigned int eax, ebx, ecx, edx;
     int i = 0;
+    #ifndef KERNEL_CLOCK
+        int has_invariant_tsc = 0;
+        unsigned int eax, ebx, ecx, edx;
+    #endif
 
     if(verbose >= 1) printk("QJump[%lu]: Init module\n", verbose);
 
