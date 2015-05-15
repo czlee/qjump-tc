@@ -1,27 +1,29 @@
-/* 
+/*
 * Copyright (c) 2015, Matthew P. Grosvenor
 * All rights reserved.
 *
-* Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
+* Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
 * conditions are met:
 *
-* 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following 
+* 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
 * disclaimer.
 *
-* 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following 
+* 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
 * disclaimer in the documentation and/or other materials provided with the distribution.
 *
-* 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products 
+* 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products
 * derived from this software without specific prior written permission.
 *
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
-* INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+* INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF 
+* EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
 * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-* LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+* LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 * OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+#define KERNEL_CLOCK 1
 
 #include <linux/module.h>
 #include <linux/types.h>
@@ -92,7 +94,7 @@ uint64_t prates_map[8] = { 0 };
 struct qjump_fifo_priv{
     u64 bytes_left;
     u64 next_timeout_cyles;
-    int drop; 
+    int drop;
     #define CYCLE_STATS_LEN (128)
     u64 cycles_consumed[CYCLE_STATS_LEN];
     u64 index;
@@ -107,6 +109,9 @@ static int qfifo_enqueue(struct sk_buff *skb, struct Qdisc *sch)
     u64 ts_now_ns = 0;
     getnstimeofday(&ts);
     ts_now_ns = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
+    #ifdef KERNEL_CLOCK
+        ts_now_cycles = ts_now_ns;
+    #endif
 
     if(ts_now_cycles >= priv->next_timeout_cyles){
         priv->next_timeout_cyles = ts_now_cycles + time_quant_cyles;
@@ -184,12 +189,14 @@ struct Qdisc *qjump_fifo_create_dflt(struct netdev_queue *dev_queue, struct Qdis
         u64 ts_now_cycles = 0;
         q->limit = limit;
         priv->bytes_left = limit;
-        priv->drop = 0; 
+        priv->drop = 0;
         priv->index = 0;
-        //ts_now_cycles = get_cycles();
-        //getnstimeofday(&ts);
-        //ts_now_cycles = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;  //get_cycles();
-        ts_now_cycles = get_cycles();
+        #ifdef KERNEL_CLOCK
+            getnstimeofday(&ts);
+            ts_now_cycles = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;  //get_cycles();
+        #else
+            ts_now_cycles = get_cycles();
+        #endif
 
         priv->next_timeout_cyles = ts_now_cycles + time_quant_cyles;
 
@@ -455,13 +462,15 @@ static int __init qjump_module_init(void)
 
     if(verbose >= 1) printk("QJump[%lu]: Init module\n", verbose);
 
-    asm("cpuid" : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (0x80000007));
-    has_invariant_tsc = edx & (1 << 8);
+    #ifndef KERNEL_CLOCK
+        asm("cpuid" : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (0x80000007));
+        has_invariant_tsc = edx & (1 << 8);
 
-    if(!has_invariant_tsc){
-        printk("QJump[%lu]: Cannot run qjump on machines without an invaraint TSC. Terminating\n", verbose);
-        return -1;
-    }
+        if(!has_invariant_tsc){
+            printk("QJump[%lu]: Cannot run qjump on machines without an invariant TSC. Terminating\n", verbose);
+            return -1;
+        }
+    #endif
 
     for(i = 0; i <3; i++){
         getnstimeofday(&ts);
