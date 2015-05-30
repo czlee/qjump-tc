@@ -4,7 +4,8 @@ QJump Traffic Control Module - The heart of QJump
 To build, run "make" in the source directory. Make sure that you have kernel headers installed.
 
 To use, run with optional paramters decribed below. eg:
-sudo insmod sch_qjump.ko verbose=4
+
+    sudo insmod sch_qjump.ko verbose=4
 
 The kernel module supports several paramters. 
 - verbose (int):    (in the range 0-4) which varies how verbose the module output is
@@ -13,7 +14,8 @@ The kernel module supports several paramters.
 - pXrate (int):     sets the the "f" value for QJump level X. Value is set as an integer multiple of the base rate given by bytesq/timeq. For example, setting p2rate to 5 indicates that the third highest priority level (p2) will receive 5x the number of bytes per epoch the highest prioirty (p0).
 - autolass (bool):  turns on the "autoclassifier" which degrades an application until it reaches the right QJump level
 
-To check that the module has inserted properly use dmesg. eg:  
+To check that the module has inserted properly use dmesg. eg: 
+```
 $ dmesg  
 [ 2379.582475] sch_qjump: module license 'BSD' taints kernel.  
 [ 2379.582479] Disabling lock debugging due to kernel taint  
@@ -38,16 +40,21 @@ $ dmesg
 [ 2382.584858] QJump: p0rate=1  
 [ 2382.584859] -------------------------------  
 [ 2382.584859]   
+```
 
 After inserting the module, you can bind qjump to an ethernet port using TC. eg:  
-sudo tc qdisc add dev eth0 root qjump
 
-You can then check that the module is working e.g:  
+    sudo tc qdisc add dev eth0 root qjump
+
+You can then check that the module is working e.g:
+```
 $ dmesg  
 [ 2519.047377] QJump[4]: Jump[4]: Delaying 279940 cycles per network tick (99us)  
 [ 2519.047382] QJump[4]: Queue 0 = @ 10Mb/s   
 [ 2519.047383] qjump[4]: Init fifo limit=128  
 [ 2519.047384] Bands= 1  
+```
 
 To remove as a TC module:  
-sudo tc qdisc del dev eth0 root qjump
+
+    sudo tc qdisc del dev eth0 root qjump
