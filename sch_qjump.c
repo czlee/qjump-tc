@@ -427,6 +427,7 @@ static int qjump_init(struct Qdisc *sch, struct nlattr *opt)
     //time_quant_cyles = timeq * frequency / SEC2US;
     time_quant_cyles = timeq * 1000; //convert to nanoseconds
     if(verbose >=0 ) printk("QJump[%lu]: Delaying %llu cycles per network tick (%lluus)\n", verbose, time_quant_cyles, (time_quant_cyles * 1000 * 1000) / frequency );
+    if(verbose >= 0) printk("QJump[%lu]: q->max_bands = %u", verbose, q->max_bands);
 
     q->queues = kcalloc(q->max_bands, sizeof(struct Qdisc *), GFP_KERNEL);
     if (!q->queues){
@@ -506,7 +507,7 @@ static int __init qjump_module_init(void)
     if(verbose >= 1) printk("QJump: Module parameteres:\n");
     if(verbose >= 1) printk("-------------------------------\n");
     if(verbose >= 1) printk("QJump: timeq=%luus\n", timeq);
-    if(verbose >= 1) printk("QJump: bytesq=%luB\n", timeq);
+    if(verbose >= 1) printk("QJump: bytesq=%luB\n", bytesq);
     if(verbose >= 1) printk("QJump: p7rate=%lu\n", p7rate);
     if(verbose >= 1) printk("QJump: p6rate=%lu\n", p6rate);
     if(verbose >= 1) printk("QJump: p5rate=%lu\n", p5rate);
