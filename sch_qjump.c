@@ -427,7 +427,7 @@ static int qjump_init(struct Qdisc *sch, struct nlattr *opt)
     //time_quant_cyles = timeq * frequency / SEC2US;
     time_quant_cyles = timeq * 1000; //convert to nanoseconds
     if(verbose >=0 ) printk("QJump[%lu]: Delaying %llu cycles per network tick (%lluus)\n", verbose, time_quant_cyles, (time_quant_cyles * 1000 * 1000) / frequency );
-    if(verbose >= 0) printk("QJump[%lu]: q->max_bands = %u", verbose, q->max_bands);
+    if(verbose >= 0) printk("QJump[%lu]: q->max_bands = %u\n", verbose, q->max_bands);
 
     q->queues = kcalloc(q->max_bands, sizeof(struct Qdisc *), GFP_KERNEL);
     if (!q->queues){
