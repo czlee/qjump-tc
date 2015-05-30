@@ -107,6 +107,7 @@ static int qfifo_enqueue(struct sk_buff *skb, struct Qdisc *sch)
     struct timespec ts;
     u64 ts_now_cycles = 0;
     u64 ts_now_ns = 0;
+    u64 ts_new_cycles = 0;
     #ifndef KERNEL_CLOCK
         ts_now_cycles = get_cycles();
     #endif
@@ -135,7 +136,10 @@ static int qfifo_enqueue(struct sk_buff *skb, struct Qdisc *sch)
                               );
         ret = qdisc_enqueue_tail(skb, sch);
         priv->bytes_left -= qdisc_pkt_len(skb);
-        priv->cycles_consumed[priv->index]= get_cycles() - ts_now_cycles;
+
+        getnstimeofday(&ts);
+        ts_new_cycles = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;  //get_cycles();
+        priv->cycles_consumed[priv->index]= ts_new_cycles - ts_now_cycles;
         priv->index = (priv->index + 1) % (CYCLE_STATS_LEN);
         return ret;
     }
@@ -150,7 +154,9 @@ static int qfifo_enqueue(struct sk_buff *skb, struct Qdisc *sch)
     }
 
     sch->qstats.drops++;
-    priv->cycles_consumed[priv->index]= get_cycles() - ts_now_cycles;
+    getnstimeofday(&ts);
+    ts_new_cycles = ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;  //get_cycles();
+    priv->cycles_consumed[priv->index]= ts_new_cycles - ts_now_cycles;
     priv->index = (priv->index + 1) % (CYCLE_STATS_LEN);
     return NET_XMIT_DROP;
 
@@ -418,7 +424,8 @@ static int qjump_init(struct Qdisc *sch, struct nlattr *opt)
     prates_map[6] = p6rate;
     prates_map[7] = p7rate;
 
-    time_quant_cyles = timeq * frequency / SEC2US;
+    //time_quant_cyles = timeq * frequency / SEC2US;
+    time_quant_cyles = timeq * 1000; //convert to nanoseconds
     if(verbose >=0 ) printk("QJump[%lu]: Delaying %llu cycles per network tick (%lluus)\n", verbose, time_quant_cyles, (time_quant_cyles * 1000 * 1000) / frequency );
 
     q->queues = kcalloc(q->max_bands, sizeof(struct Qdisc *), GFP_KERNEL);
